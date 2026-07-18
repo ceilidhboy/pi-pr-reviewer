@@ -41,10 +41,9 @@ export default function (pi: ExtensionAPI) {
       const source = join(agentsDir, file);
       const target = join(destDir, file);
 
-      // Remove existing file or symlink
-      if (existsSync(target)) {
-        unlinkSync(target);
-      }
+      // Remove existing file or dangling symlink
+      // existsSync returns false for dangling symlinks, so always try unlink
+      try { unlinkSync(target); } catch { /* nothing to remove */ }
 
       symlinkSync(source, target);
     }
