@@ -19,7 +19,7 @@ Automated pull request reviews for [Pi](https://pi.dev). Delegates to reviewer a
 ## Installation
 
 ```bash
-pi install git:github.com:ceilidhboy/pi-pr-reviewer.git
+pi install git:github.com/ceilidhboy/pi-pr-reviewer.git
 ```
 
 Then run `/reload` in Pi (or restart Pi).
