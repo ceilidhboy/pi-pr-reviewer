@@ -1,0 +1,11 @@
+{
+  "name": "pi-pr-reviewer",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PR reviewer agent and skill for Pi — automated pull request reviews with reviewer + oracle sub-agents",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["./extensions/install-agent.ts"],
+    "skills": ["./skills"]
+  }
+}
