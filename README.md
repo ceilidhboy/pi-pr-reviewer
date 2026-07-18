@@ -93,9 +93,9 @@ You ask to review a PR
         ├── Write report to file
         └── contact_supervisor → present for approval
                                   │
-                    ┌──────────────┼──────────────┐
-                    ▼              ▼              ▼
-                 "Post it"    "Revise X"    "Don't post"
+                   ┌──────────────┼──────────────┐
+                   ▼              ▼              ▼
+                "Post it"    "Revise X"    "Don't post"
 ```
 
 ## Related packages
