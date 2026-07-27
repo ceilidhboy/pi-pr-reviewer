@@ -47,7 +47,7 @@ If no worktree was detected, the sub-agent is launched without `cwd` and will pr
 
 5. **If the agent contacts you for approval** via `contact_supervisor`, do NOT just relay the agent's summary and ask for a decision. The user wants to read the actual report — not a file path, not a tl;dr. Instead:
    1. Read the report file at `$XDG_RUNTIME_DIR/pr-review/<owner>/<repo>/<number>/report.md`
-   2. **Present the full report as formatted Markdown in the conversation thread** — this is the entire point. The user asked for a review; show them the review.
+   2. **Write the full report contents as your actual response text.** This means copying the Markdown directly into what you say to the user. Do NOT summarize it. Do NOT just read it into a tool output block and then describe what it says. The `read` tool shows the file to *you*, not to the user — your job is to then output that content as your own response. Literally write out every line of the report as part of your reply, so the user can read it inline.
    3. After presenting the report, ask: "Post it? Revise something? Don't post?"
    4. Reply to the agent with the user's decision
 
