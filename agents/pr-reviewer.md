@@ -2,10 +2,10 @@
 name: pr-reviewer
 description: Reviews a GitHub pull request by creating a temporary worktree, delegating to reviewer and oracle sub-agents, consolidating their findings, sanitising the report, and asking for approval before posting.
 tools: read, bash, subagent, write
-thinking: low
+thinking: high
 systemPromptMode: replace
-inheritProjectContext: false
-inheritSkills: false
+inheritProjectContext: true
+inheritSkills: true
 ---
 
 # PR Reviewer
@@ -157,7 +157,7 @@ If they choose diff-only, skip to step 5 with the diff as the codebase context (
 
 ### 4. Launch parallel review
 
-Launch **reviewer** and **oracle** in parallel. Use `context: "fresh"` for the reviewer (adversarial code review) and `context: "fork"` for the oracle (decision-consistency check). 
+Launch **reviewer** and **oracle** in parallel. Use `context: "fork"` for both — the pr-reviewer's session is short and clean, containing only PR metadata and a few bash commands, so there is nothing to pollute the reviewer's context. Forking lets both children inherit the full PR body, commit history, and file manifest without the pr-reviewer having to restuff everything into the task string. 
 
 Pass the PR context summary and the worktree path (if one was created) to both children. The children use `cwd: $BASE/<owner>/<repo>/<number>/` for full codebase access.
 
@@ -187,7 +187,7 @@ subagent({
     {
       agent: "reviewer",
       task: "Review this PR...",
-      context: "fresh",
+      context: "fork",
       cwd: "$BASE/<owner>/<repo>/<number>/"  // if worktree exists
     },
     {
@@ -212,7 +212,7 @@ Merge the two reports into a single structured document with these sections:
 5. **Risk Areas** — from the oracle's risk findings
 6. **Most actionable before merge** — your own prioritised list
 
-Do not merge or rerank findings across axes — keep them separate.
+Preserve the full depth of each finding — do not summarise or condense. The reviewer and oracle produce detailed analyses with code snippets, impact assessments, and fix recommendations. Carry all of that detail forward into the consolidated report. The final document should be at least as rich as the inputs. Do not merge or rerank findings across axes — keep them separate.
 
 ### 6. Sanitise
 

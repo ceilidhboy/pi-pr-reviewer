@@ -31,6 +31,7 @@ If `TOPLEVEL` is set, record it to use as the sub-agent's working directory. Thi
 const launchConfig = {
   agent: "pr-reviewer",
   task: "PR #<number> on <owner/repo>",
+  context: "fresh",
   async: true
 }
 if (toplevel) {
