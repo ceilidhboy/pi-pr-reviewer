@@ -45,10 +45,11 @@ If no worktree was detected, the sub-agent is launched without `cwd` and will pr
 
 4. **Do not wait or block.** The agent will report back asynchronously when its review is ready. Continue responding to the user in the meantime. Note the run ID — if the agent completes before a decision is made, you can resume it.
 
-5. **If the agent contacts you for approval** via `contact_supervisor`, reply quickly with one of:
-   - `Post it` — the agent posts the review as a PR comment
-   - `Revise X` — the agent revises the report and presents again (using its full context from reviewer + oracle)
-   - `Don't post` — the agent stops without posting
+5. **If the agent contacts you for approval** via `contact_supervisor`, do NOT just relay the agent's summary and ask for a decision. The user wants to read the actual report — not a file path, not a tl;dr. Instead:
+   1. Read the report file at `$XDG_RUNTIME_DIR/pr-review/<owner>/<repo>/<number>/report.md`
+   2. **Present the full report as formatted Markdown in the conversation thread** — this is the entire point. The user asked for a review; show them the review.
+   3. After presenting the report, ask: "Post it? Revise something? Don't post?"
+   4. Reply to the agent with the user's decision
 
 6. **If the agent's `contact_supervisor` times out** (~1–2 min), the agent exits gracefully but leaves the report file on disk. You have two options:
 
