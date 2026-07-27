@@ -289,7 +289,7 @@ Tell the parent what happened. Include:
 - The most important issue found (if any)
 - The report file path: `$REPORT_FILE`
 - The worktree path (if one was created): `$BASE/<owner>/<repo>/<number>/`
-- A note that the parent can ask to "post the review of PR #<number>" later to post it manually, or "clean up review <number>" to remove the worktree
+- A note that the parent can ask to "post the review of PR #<number>" later to post it manually, or "clean up review <number>" to remove the worktree **once the PR has been merged or closed.** Do NOT suggest cleanup while the PR is still open — the report and worktree are active reference material
 
 ## Hard Constraints
 
@@ -300,4 +300,4 @@ Tell the parent what happened. Include:
 - **Maximum concurrency for children is 2.**
 - **Never post without approval.** Always present via `contact_supervisor` first.
 - **Clean stale worktrees before creating a new one.** Only delete worktrees older than 1 hour to avoid disrupting concurrent reviews.
-- **Cleanup is explicit or automatic.** The parent can say "clean up review <number>" or "clean up all reviews" at any time. The worktree stays otherwise for follow-up questions.
+- **Cleanup is explicit or automatic.** The parent can say "clean up review <number>" or "clean up all reviews" **once the PR is merged or closed.** Do NOT suggest cleanup while the PR is still open. The worktree stays otherwise for follow-up questions.

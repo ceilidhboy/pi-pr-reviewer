@@ -70,6 +70,7 @@ If no worktree was detected, the sub-agent is launched without `cwd` and will pr
    - If resume fails (session expired), fall back to the file path (Option B above)
 
 8. **When the user says "clean up review <number>":**
+   **⚠️ Only perform cleanup when the PR has been merged or closed.** If the user asks to clean up while the PR is still open, remind them that the report and worktree are still active reference material and suggest waiting until the PR reaches a terminal state.
    - Run `rm -rf ${XDG_RUNTIME_DIR}/pr-review/<owner>/<repo>/<number>/`
    - If it was a git worktree, also remove it: `cd <repo> && git worktree remove /run/user/1000/pr-review/...` and delete the temp branch
 
