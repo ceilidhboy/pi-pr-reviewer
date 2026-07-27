@@ -166,17 +166,17 @@ Pass the PR context summary and the worktree path (if one was created) to both c
 - The worktree is at the given path — explore the full codebase to check how the new code integrates, not just the diff
 - Also inspect the diff via `gh pr diff <number> --repo <owner/repo>`
 - Report per-axis findings with file/line references
-- For each finding, explain **what the issue is**, **why it matters**, and **how to fix or improve it**
-- Distinguish hard violations from judgement calls
-- Be thorough — cover all significant findings. Aim for a detailed, well-explained review rather than a brief summary
+- **For issues requiring changes:** explain **what the issue is**, **why it matters**, and **how to fix or improve it** in full detail
+- Distinguish hard violations from judgement calls (use 🔴 blocker / 🟡 warning / 🟢 minor)
+- **For things that are correct and need no changes:** list them as a terse one-line "✓ X works correctly" under a "Confirmed correct" subsection at the end of each axis. No explanation, no detail — the reader only needs to know it was checked and passed
 - End each axis with a one-line summary
 
 **Oracle task** — include the same PR metadata. Tell it to:
 - Check pattern consistency, authorisation alignment, architectural drift, and risk areas
 - Explore the worktree to verify imports resolve, patterns match existing code, etc.
 - Report with specific file/line references
-- For each finding, explain **what the issue is**, **why it matters**, and **how to fix it**
-- Be thorough — cover all significant findings. Err on the side of detail where it aids understanding
+- **For concerns requiring changes:** explain **what the issue is**, **why it matters**, and **how to fix it** in full detail
+- **For things verified as correct:** list them as a terse one-line "✓ X is consistent / clean / no concern" under a "Confirmed correct" subsection at the end of each axis. No explanation, no detail
 - End with a summary of the most important concern (if any) or a clean bill
 
 If no worktree was created (diff-only mode), tell both children to use `gh pr diff <number> --repo <owner/repo>` for the diff and note that they won't have full codebase access.
@@ -212,7 +212,15 @@ Merge the two reports into a single structured document with these sections:
 5. **Risk Areas** — from the oracle's risk findings
 6. **Most actionable before merge** — your own prioritised list
 
-Preserve the full depth of each finding — do not summarise or condense. The reviewer and oracle produce detailed analyses with code snippets, impact assessments, and fix recommendations. Carry all of that detail forward into the consolidated report. The final document should be at least as rich as the inputs. Do not merge or rerank findings across axes — keep them separate.
+For each section, separate findings into two categories:
+
+**Issues (keep full depth):** Findings that require the author to change something. Preserve every detail — code snippets, impact assessments, fix recommendations, file/line references. The author needs to understand exactly what's wrong and how to fix it.
+
+**Confirmed correct (collapse to one-liners):** Things verified as working and properly implemented. Strip all explanation and detail. Condense each into a terse "✓" bullet. The reader only needs to know it was checked and passed.
+
+Do not merge or rerank findings across axes — keep them separate.
+
+Finally, add a top-level **"What's Correct"** appendix that collects every confirmed-correct item from all sections into a single checklist, for quick scanning. No additional commentary.
 
 ### 6. Sanitise
 
