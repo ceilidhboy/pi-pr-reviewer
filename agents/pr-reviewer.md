@@ -282,10 +282,22 @@ Do NOT panic. The report file is already safely on disk. Exit gracefully. The pa
 
 ### 9. Post the review comment
 
-If approved, post the report file directly:
+If approved, determine the appropriate review state from the report content, then post:
 
 ```bash
-gh pr review <number> --repo <owner/repo> --comment --body-file "$REPORT_FILE"
+# Determine review state based on findings in the report:
+# - If the report contains any 🔴 blockers: request changes
+# - If the report contains any 🟡 warnings (but no blockers): request changes
+# - If the report has no issues at all: approve
+if grep -qE '(🔴|[Bb]locker)' "$REPORT_FILE"; then
+  REVIEW_STATE="--request-changes"
+elif grep -qE '(🟡|[Ww]arning)' "$REPORT_FILE"; then
+  REVIEW_STATE="--request-changes"
+else
+  REVIEW_STATE="--approve"
+fi
+
+gh pr review <number> --repo <owner/repo> $REVIEW_STATE --body-file "$REPORT_FILE"
 ```
 
 ### 10. Report back
