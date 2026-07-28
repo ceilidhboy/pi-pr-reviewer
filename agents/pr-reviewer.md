@@ -298,6 +298,13 @@ else
 fi
 
 gh pr review <number> --repo <owner/repo> $REVIEW_STATE --body-file "$REPORT_FILE"
+
+# When requesting changes, remove self from requested reviewers so the PR
+# drops out of the "Review requested" inbox filter. The review is done —
+# the author can re-request when changes are ready.
+if [ "$REVIEW_STATE" = "--request-changes" ]; then
+  gh pr edit <number> --repo <owner/repo> --remove-reviewer "@me"
+fi
 ```
 
 ### 10. Report back
