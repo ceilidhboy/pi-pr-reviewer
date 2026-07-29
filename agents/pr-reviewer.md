@@ -65,9 +65,13 @@ Use `gh` to gather PR context. Always use `--repo owner/repo` for all commands w
 ```bash
 gh pr view <number> --repo <owner/repo> --json number,title,body,headRefName,baseRefName,files,additions,deletions,author,state,createdAt
 gh pr view <number> --repo <owner/repo> --json commits
+
+# Previous review history — needed for contradiction detection (step 6) and to pass to sub-agents
+gh api "repos/<owner>/<repo>/pulls/<number>/reviews?per_page=100" --jq '.[] | select(.state != "PENDING") | {id: .id, user: .user.login, body: .body, state: .state, submitted_at: .submitted_at}'
+gh api "repos/<owner>/<repo>/pulls/<number>/comments?per_page=100" --jq '.[] | {id: .id, user: .user.login, body: .body, path: .path, line: .line, diff_hunk: .diff_hunk}'
 ```
 
-Extract a compact summary: title, description, file list (path + additions + deletions), commit SHAs and messages, base branch, head branch.
+Extract a compact summary: title, description, file list (path + additions + deletions), commit SHAs and messages, base branch, head branch, and **all previous review comments and change requests** (both top-level reviews and inline comments).
 
 ### 3. Determine review approach
 
@@ -161,7 +165,7 @@ Launch **reviewer** and **oracle** in parallel. Use `context: "fork"` for both �
 
 Pass the PR context summary and the worktree path (if one was created) to both children. The children use `cwd: $BASE/<owner>/<repo>/<number>/` for full codebase access.
 
-**Reviewer task** — include PR metadata (number, repo, title, description, base branch, head branch, file list, commits). Tell it to:
+**Reviewer task** — include the PR metadata (number, repo, title, description, base branch, head branch, file list, commits) **and the full previous review history** (all prior review comments and inline comments, including their change requests). Tell it to:
 - Review along two axes: **Standards** (code conventions, code smells) and **Spec** (fidelity to the PR description)
 - The worktree is at the given path — explore the full codebase to check how the new code integrates, not just the diff
 - Also inspect the diff via `gh pr diff <number> --repo <owner/repo>`
@@ -170,14 +174,16 @@ Pass the PR context summary and the worktree path (if one was created) to both c
 - Distinguish hard violations from judgement calls (use 🔴 blocker / 🟡 warning / 🟢 minor)
 - **For things that are correct and need no changes:** list them as a terse one-line "✓ X works correctly" under a "Confirmed correct" subsection at the end of each axis. No explanation, no detail — the reader only needs to know it was checked and passed
 - End each axis with a one-line summary
+- **Before finalising each change request, cross-check it against the previous review history provided.** If a proposed change request would reverse a change request from a previous review (e.g. a previous review asked for A→B and the code was changed to B, but this review would ask for B→A), flag it explicitly: either (a) include it with a ⚠️ **Reversal note** explaining why the previous recommendation is being walked back, or (b) if you believe the previous recommendation was correct, drop the proposed change request and instead confirm the current code as correct. If you cannot determine which is clearly correct, mark it as `⚠️ AMBIGUOUS REVERSAL:` so the orchestrator can arbitrate.
 
-**Oracle task** — include the same PR metadata. Tell it to:
+**Oracle task** — include the same PR metadata **and the full previous review history** (all prior review comments and inline comments, including their change requests). Tell it to:
 - Check pattern consistency, authorisation alignment, architectural drift, and risk areas
 - Explore the worktree to verify imports resolve, patterns match existing code, etc.
 - Report with specific file/line references
 - **For concerns requiring changes:** explain **what the issue is**, **why it matters**, and **how to fix it** in full detail
 - **For things verified as correct:** list them as a terse one-line "✓ X is consistent / clean / no concern" under a "Confirmed correct" subsection at the end of each axis. No explanation, no detail
 - End with a summary of the most important concern (if any) or a clean bill
+- **Before finalising each concern, cross-check it against the previous review history provided.** If a proposed concern would reverse a recommendation from a previous review (e.g. a previous review asked for pattern A→B and the code was changed to B, but this review would ask for B→A), flag it explicitly: either (a) include it with a ⚠️ **Reversal note** explaining why the previous recommendation is being walked back, or (b) if you believe the previous recommendation was correct, drop the proposed concern and instead confirm the current approach as correct. If you cannot determine which is clearly correct, mark it as `⚠️ AMBIGUOUS REVERSAL:` so the orchestrator can arbitrate.
 
 If no worktree was created (diff-only mode), tell both children to use `gh pr diff <number> --repo <owner/repo>` for the diff and note that they won't have full codebase access.
 
@@ -222,7 +228,97 @@ Do not merge or rerank findings across axes — keep them separate.
 
 Finally, add a top-level **"What's Correct"** appendix that collects every confirmed-correct item from all sections into a single checklist, for quick scanning. No additional commentary.
 
-### 6. Sanitise
+### 6. Check for contradiction reversals
+
+Before sanitising, check whether the consolidated report's change requests contradict any previous reviews on this PR. This prevents the frustrating cycle where Review 1 says "change A to B", the author changes A to B, then Review 2 says "change B back to A".
+
+**Fetch previous review history:**
+
+Use `gh api` to retrieve all prior review comments (both top-level reviews and inline comments) on this PR:
+
+```bash
+REVIEWS_JSON="/tmp/pr-<number>-reviews.json"
+COMMENTS_JSON="/tmp/pr-<number>-comments.json"
+
+# Top-level reviews
+gh api "repos/<owner>/<repo>/pulls/<number>/reviews?per_page=100" --jq '.[] | select(.state != "PENDING")' > "$REVIEWS_JSON"
+
+# Inline review comments (diff-level comments)
+gh api "repos/<owner>/<repo>/pulls/<number>/comments?per_page=100" > "$COMMENTS_JSON"
+```
+
+Read both files. Parse every review and comment for **change requests** — statements that ask the author to change the code in a specific way. Look for:
+
+- 🔴 blocker / 🟡 warning items with concrete fix suggestions
+- Phrases like "change X to Y", "use A instead of B", "rename X to Y", "refactor to use X", "replace X with Y"
+- Inline comments suggesting specific code changes on specific lines
+- Any recommendation that would result in a materially different code structure or approach
+
+Build a mental list of all previous change requests, noting for each: the file/location, what was being changed *from* and what was being changed *to*, and the review number or timestamp.
+
+**Cross-check the new report against previous requests:**
+
+For every change request in the new consolidated report, ask: **does this request the opposite of something a previous review asked for?**
+
+| Reversal pattern | Example |
+|---|---|
+| **Direct reversal** | Previous: "rename `fetch` to `retrieve`" — New: "rename `retrieve` to `fetch`" |
+| **Technique reversal** | Previous: "use an action class" — New: "use a service class" |
+| **Structure reversal** | Previous: "extract this into a helper" — New: "inline this, don't extract" |
+| **Approach reversal** | Previous: approved a pattern (implicitly) — New: requests replacing that pattern |
+| **Approval-then-rejection** | Previous review approved the PR — New review requests changes to code that was present when it was approved |
+
+Be strict about what counts as a reversal. These are **not** reversals:
+- A refinement or elaboration of the same direction (e.g. "add error handling" followed by "use try/catch specifically")
+- A request about entirely new code added after the previous review
+- A repeat of the same request that was never implemented
+
+**When a reversal is detected, evaluate it:**
+
+For each detected reversal:
+
+1. **Read the actual code** in the worktree to determine the current state — was the previous recommendation implemented, partially implemented, or ignored?
+2. **Understand both arguments** — review the reasoning from both the previous review and the new review
+3. **Evaluate against the codebase** — check project conventions (ADRs, coding standards, existing patterns), the PR's intent, and general best practices
+4. **Make a determination:**
+
+| Verdict | Action |
+|---|---|
+| **New recommendation is clearly correct** | Keep it. Add a **reversal note** immediately after the change request: ⚠️ **Reversal note:** This reverses a recommendation from [review #N or earlier comment] which asked for [the opposite]. That earlier recommendation is being walked back because [concise reason]. |
+| **Previous recommendation is clearly correct** | Drop the new change request entirely. Move it to the "Confirmed correct" section with: ✓ [thing]: kept as-is — a previous review correctly recommended [approach], and the new review's suggestion to reverse it doesn't hold because [reason]. |
+| **Genuinely ambiguous — both have merit** | Do NOT include this change request in the report. Collect it for escalation. |
+
+**Escalate ambiguous reversals:**
+
+If any reversals are genuinely ambiguous, pause before sanitising and escalate to the orchestrator via `contact_supervisor`:
+
+```javascript
+contact_supervisor({
+  reason: "need_decision",
+  message: `⚠️ I've detected [N] ambiguous reversal(s) between this review and previous reviews on PR #<number>:
+
+1. **[File/area]**: Review #[X] recommended [A], but the new review's finding recommends [B]. Tradeoff: [brief summary].
+2. **[File/area]**: ...
+
+I cannot determine which recommendation is clearly correct — both have merit and the codebase doesn't offer a decisive precedent.
+
+Please decide for each whether to:
+- Keep the new recommendation (with a reversal note)
+- Keep the previous recommendation and drop the new one
+
+I'll update the report accordingly before posting.`
+})
+```
+
+Wait for the orchestrator's reply. Apply their decisions to the report, then continue to sanitise.
+
+If there are no reversals, or all reversals were resolved unambiguously, proceed directly to sanitise.
+
+**Important:**
+- Do not flag the same change request as a reversal if it's simply restating a previous concern that was never addressed. Only flag reversals — where a change was made (or requested) in one direction and now the opposite is being demanded.
+- The reversal check is about preventing contradictory demands, not about preventing reviewers from changing their minds when new information comes to light. When the new recommendation is correct, include the reversal note — transparency is the goal, not censorship.
+
+### 7. Sanitise
 
 Remove all internal process references from the report before presenting it. Specifically:
 - Remove any mention of "reviewer", "oracle", "sub-agent", "agent", "context: fresh", "context: fork", "parallel", "delegation", "parent", "worktree", "temp", or any other framework terminology
@@ -230,7 +326,7 @@ Remove all internal process references from the report before presenting it. Spe
 - Write as if you performed all the analysis yourself — use "I" or "We", not "the reviewer found" or "the oracle noted"
 - The PR author should see a clean, professional code review with no indication of how the sausage was made
 
-### 7. Write the report to a file
+### 8. Write the report to a file
 
 Write the consolidated, sanitised report to a markdown file in the worktree's parent directory:
 
@@ -244,7 +340,7 @@ REPORTBODY
 
 The report file lives alongside the worktree so cleanup removes both together.
 
-### 8. Present for approval via contact_supervisor
+### 9. Present for approval via contact_supervisor
 
 Call `contact_supervisor` with a brief summary and the file path — do NOT embed the full report inline:
 
@@ -271,8 +367,8 @@ What would you like to do?
 The `contact_supervisor` call may time out if the parent takes a while to respond. This is expected. Handle the two cases:
 
 **If the parent replies in time:**
-- **"Post it"**: Proceed to step 9.
-- **"Revise X"**: Revise the report in the file (update `$REPORT_FILE`), then go back to step 8 to present again.
+- **"Post it"**: Proceed to step 10.
+- **"Revise X"**: Revise the report in the file (update `$REPORT_FILE`), then go back to step 9 to present again.
 - **"Don't post"**: Skip posting.
 
 **If `contact_supervisor` times out (no reply received):**
@@ -280,7 +376,7 @@ Do NOT panic. The report file is already safely on disk. Exit gracefully. The pa
 
 **Never embed the full report text in a `contact_supervisor` message.** Always put it in the file and reference the file path. This avoids truncation and ensures the parent can read the report formatted as markdown.
 
-### 9. Post the review comment
+### 10. Post the review comment
 
 If approved, determine the appropriate review state from the report content, then post:
 
@@ -300,7 +396,7 @@ fi
 gh pr review <number> --repo <owner/repo> $REVIEW_STATE --body-file "$REPORT_FILE"
 ```
 
-### 10. Report back
+### 11. Report back
 
 Tell the parent what happened. Include:
 - PR number and title
