@@ -51,7 +51,9 @@ If no worktree was detected, the sub-agent is launched without `cwd` and will pr
    3. After presenting the report, ask: "Post it? Revise something? Don't post?"
    4. Reply to the agent with the user's decision
 
-6. **If the agent's `contact_supervisor` times out** (~1–2 min), the agent exits gracefully but leaves the report file on disk. You have two options:
+6. **Offer to escalate outstanding findings to GitHub issues** — after the review decision is made, if the report contains unresolved 🟡/🟢 findings, propose turning them into GitHub issues **assigned to the PR author** so they don't get lost. Group only what shares a subsystem or fix class; keep self-contained fixes as their own issue. Reference the PR and the finding in each body. Check `gh issue list` for duplicates first, present the proposed list, and wait for an explicit yes — never create issues unprompted. Skip documentation-only items and anything another issue already tracks.
+
+7. **If the agent's `contact_supervisor` times out** (~1–2 min), the agent exits gracefully but leaves the report file on disk. You have two options:
 
    **Option A — Resume the agent (preserves full context):**
    ```javascript
@@ -73,15 +75,15 @@ If no worktree was detected, the sub-agent is launched without `cwd` and will pr
       ```
    4. Report back that it was posted
 
-7. **When the user says "post the review of PR #<number>" and you have the run ID:**
+8. **When the user says "post the review of PR #<number>" and you have the run ID:**
    - Resume the agent: `subagent({ action: "resume", id: "<run-id>", message: "Post the review now, please." })`
    - If resume fails (session expired), fall back to the file path (Option B above)
 
-8. **When the user says "clean up review <number>":**
+9. **When the user says "clean up review <number>":**
    **⚠️ Only perform cleanup when the PR has been merged or closed.** If the user asks to clean up while the PR is still open, remind them that the report and worktree are still active reference material and suggest waiting until the PR reaches a terminal state.
    - Run `rm -rf ${XDG_RUNTIME_DIR}/pr-review/<owner>/<repo>/<number>/`
    - If it was a git worktree, also remove it: `cd <repo> && git worktree remove /run/user/1000/pr-review/...` and delete the temp branch
 
-9. **Follow-up questions** — if the agent can be resumed, the user can ask about the codebase or request report changes. If it can't, the report file is still there for reference.
+10. **Follow-up questions** — if the agent can be resumed, the user can ask about the codebase or request report changes. If it can't, the report file is still there for reference.
 
 The `pr-reviewer` agent handles the review itself. You manage the lifecycle: capture the run ID at launch, use `resume` for follow-ups, and fall back to the file only if needed.
