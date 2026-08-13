@@ -175,6 +175,7 @@ Pass the PR context summary and the worktree path (if one was created) to both c
 - **For things that are correct and need no changes:** list them as a terse one-line "✓ X works correctly" under a "Confirmed correct" subsection at the end of each axis. No explanation, no detail — the reader only needs to know it was checked and passed
 - End each axis with a one-line summary
 - **Before finalising each change request, cross-check it against the previous review history provided.** If a proposed change request would reverse a change request from a previous review (e.g. a previous review asked for A→B and the code was changed to B, but this review would ask for B→A), flag it explicitly: either (a) include it with a ⚠️ **Reversal note** explaining why the previous recommendation is being walked back, or (b) if you believe the previous recommendation was correct, drop the proposed change request and instead confirm the current code as correct. If you cannot determine which is clearly correct, mark it as `⚠️ AMBIGUOUS REVERSAL:` so the orchestrator can arbitrate.
+- **Verify every previous change request was actually performed:** walk through each change request from the previous review history one by one and check the current code to determine whether it was implemented. Produce a per-request status list (✓ addressed / ⚠ still open) with file/line evidence, and carry every still-open request forward as a repeat finding with the same or updated severity. A still-open request is NOT a reversal — it is an unmet obligation from the earlier review, and it must be restated so the author cannot merge without addressing it.
 
 **Oracle task** — include the same PR metadata **and the full previous review history** (all prior review comments and inline comments, including their change requests). Tell it to:
 - Check pattern consistency, authorisation alignment, architectural drift, and risk areas
@@ -184,6 +185,7 @@ Pass the PR context summary and the worktree path (if one was created) to both c
 - **For things verified as correct:** list them as a terse one-line "✓ X is consistent / clean / no concern" under a "Confirmed correct" subsection at the end of each axis. No explanation, no detail
 - End with a summary of the most important concern (if any) or a clean bill
 - **Before finalising each concern, cross-check it against the previous review history provided.** If a proposed concern would reverse a recommendation from a previous review (e.g. a previous review asked for pattern A→B and the code was changed to B, but this review would ask for B→A), flag it explicitly: either (a) include it with a ⚠️ **Reversal note** explaining why the previous recommendation is being walked back, or (b) if you believe the previous recommendation was correct, drop the proposed concern and instead confirm the current approach as correct. If you cannot determine which is clearly correct, mark it as `⚠️ AMBIGUOUS REVERSAL:` so the orchestrator can arbitrate.
+- **Verify previously requested pattern/architectural changes were implemented:** for each concern from the previous review history, check the current code and note ✓ addressed or ⚠ still open in your report.
 
 If no worktree was created (diff-only mode), tell both children to use `gh pr diff <number> --repo <owner/repo>` for the diff and note that they won't have full codebase access.
 
@@ -213,7 +215,8 @@ Merge the two reports into a single structured document with these sections:
 3. **Pattern Consistency** — from the oracle's pattern/architecture findings
 4. **Authorisation & Scoping** — from the oracle's auth findings
 5. **Risk Areas** — from the oracle's risk findings
-6. **Most actionable before merge** — your own prioritised list
+6. **Previous Review Follow-up** — only when previous reviews exist: per-request status (✓ addressed / ⚠ still open) of every change request from earlier reviews, with still-open items carried forward as repeat findings
+7. **Most actionable before merge** — your own prioritised list
 
 For each section, separate findings into two categories:
 
