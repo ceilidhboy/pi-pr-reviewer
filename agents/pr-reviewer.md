@@ -1,7 +1,7 @@
 ---
 name: pr-reviewer
 description: Reviews a GitHub pull request by creating a temporary worktree, delegating to reviewer and oracle sub-agents, consolidating their findings, sanitising the report, and asking for approval before posting.
-tools: read, bash, subagent, write
+tools: read, bash, subagent, subagent_wait, write
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: true
@@ -187,25 +187,22 @@ Pass the PR context summary and the worktree path (if one was created) to both c
 
 If no worktree was created (diff-only mode), tell both children to use `gh pr diff <number> --repo <owner/repo>` for the diff and note that they won't have full codebase access.
 
+Launch both children in one scripted workflow via `subagent` with a `workflowScript` — this is the only supported execution form in current pi. Use `runs.all([...])` for the parallel wave, with plain `{ key, agent, task }` items (plus `context` / `cwd` where needed). Pass `async: false` so the workflow runs as a small foreground run: it blocks until both children complete and returns their outputs directly. `subagent_wait` is in your toolset as the fallback for blocking on async launches, but the foreground form is the preferred wait mechanism here.
+
 ```javascript
 subagent({
-  tasks: [
-    {
-      agent: "reviewer",
-      task: "Review this PR...",
-      context: "fork",
-      cwd: "$BASE/<owner>/<repo>/<number>/"  // if worktree exists
-    },
-    {
-      agent: "oracle",
-      task: "Check decision consistency for this PR...",
-      context: "fork",
-      cwd: "$BASE/<owner>/<repo>/<number>/"  // if worktree exists
-    }
-  ],
-  concurrency: 2
+  workflowScript: `
+    const results = await runs.all([
+      { key: "reviewer", agent: "reviewer", context: "fork", cwd: "$BASE/<owner>/<repo>/<number>/", task: "Review this PR..." },
+      { key: "oracle", agent: "oracle", context: "fork", cwd: "$BASE/<owner>/<repo>/<number>/", task: "Check decision consistency for this PR..." }
+    ]);
+    return results.map(result => result.output);
+  `,
+  async: false
 })
 ```
+
+Fill in the actual reviewer/oracle task text per the instructions above. The returned array holds each child's output in `{ key, agent, task, output }` order. If a child run detaches for supervisor coordination instead of completing, use `subagent_wait({ id: "..." })` to block for it.
 
 ### 5. Consolidate
 
