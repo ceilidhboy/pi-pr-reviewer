@@ -25,23 +25,18 @@ fi
 
 If `TOPLEVEL` is set, record it to use as the sub-agent's working directory. This ensures the sub-agent's built-in `git rev-parse` discovery logic runs against the actual worktree.
 
-3. **Launch the `pr-reviewer` sub-agent asynchronously** — pass `cwd` if a worktree was detected:
+3. **Launch the `pr-reviewer` sub-agent asynchronously** — pass `cwd` if a worktree was detected. Direct execution (`subagent({ agent, task, ... })`) was removed in current pi — all child launches go through a `workflowScript` with `runs.run`:
 
 ```javascript
-const launchConfig = {
-  agent: "pr-reviewer",
-  task: "PR #<number> on <owner/repo>",
-  context: "fresh",
+const cwdArg = toplevel ? `, cwd: '${toplevel}'` : ''
+const run = subagent({
+  workflowScript: `return runs.run('main', { agent: 'pr-reviewer', task: 'PR #<number> on <owner/repo>', context: 'fresh'${cwdArg} })`,
   async: true
-}
-if (toplevel) {
-  launchConfig.cwd = toplevel
-}
-const run = subagent(launchConfig)
+})
 // run.id holds the async run ID — keep it for later
 ```
 
-If no worktree was detected, the sub-agent is launched without `cwd` and will prompt the user (diff-only or clone) when needed.
+If no worktree was detected (`toplevel` empty), the sub-agent is launched without `cwd` and will prompt the user (diff-only or clone) when needed.
 
 4. **Do not wait or block.** The agent will report back asynchronously when its review is ready. Continue responding to the user in the meantime. Note the run ID — if the agent completes before a decision is made, you can resume it.
 
