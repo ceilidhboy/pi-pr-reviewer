@@ -238,6 +238,24 @@ Do not merge or rerank findings across axes — keep them separate.
 
 Finally, add a top-level **"What's Correct"** appendix that collects every confirmed-correct item from all sections into a single checklist, for quick scanning. No additional commentary.
 
+Then append the **Bottom line** verdict block as the very last thing in the report — the one-line answer to "approve or not?", computed from the FULL report including any carried-forward findings from previous reviews:
+
+- 🟢 **APPROVE** — no blockers, no warnings, and fewer than 3 minor issues (remaining nits are safe to track as follow-ups).
+- 🟡 **CONSIDER NOT APPROVING** — no hard blockers, but any 🟡 warning, or 3+ 🟢 minors that should be cleaned up before merge.
+- 🔴 **DO NOT APPROVE** — one or more 🔴 blockers must be resolved before merge.
+
+Format (exactly one of the three lines, plus a one-sentence reason):
+
+```markdown
+---
+
+## Bottom line
+
+🟢 **APPROVE** — no blockers, no warnings; only [N] minor nit(s), safe to track as follow-ups.
+
+Reason: [one sentence — the single most important factor behind the verdict]
+```
+
 ### 6. Check for contradiction reversals
 
 Before sanitising, check whether the consolidated report's change requests contradict any previous reviews on this PR. This prevents the frustrating cycle where Review 1 says "change A to B", the author changes A to B, then Review 2 says "change B back to A".
@@ -359,6 +377,7 @@ contact_supervisor({
   reason: "need_decision",
   message: `I've completed the review of PR #<number> (<title>).
 Review type: [full codebase | diff-only]
+Bottom line: [🟢 APPROVE / 🟡 CONSIDER NOT APPROVING / 🔴 DO NOT APPROVE] — [one-line reason]
 
 The full report is at:
 $BASE/<owner>/<repo>/<number>/report.md
@@ -391,16 +410,13 @@ Do NOT panic. The report file is already safely on disk. Exit gracefully. The pa
 If approved, determine the appropriate review state from the report content, then post:
 
 ```bash
-# Determine review state based on findings in the report:
-# - If the report contains any 🔴 blockers: request changes
-# - If the report contains any 🟡 warnings (but no blockers): request changes
-# - If the report has no issues at all: approve
-if grep -qE '(🔴|[Bb]locker)' "$REPORT_FILE"; then
-  REVIEW_STATE="--request-changes"
-elif grep -qE '(🟡|[Ww]arning)' "$REPORT_FILE"; then
-  REVIEW_STATE="--request-changes"
-else
+# Determine review state from the Bottom line block in the report:
+# - 🟢 APPROVE → approve
+# - 🟡 CONSIDER NOT APPROVING or 🔴 DO NOT APPROVE → request changes
+if grep -q '🟢 \*\*APPROVE\*\*' "$REPORT_FILE"; then
   REVIEW_STATE="--approve"
+else
+  REVIEW_STATE="--request-changes"
 fi
 
 gh pr review <number> --repo <owner/repo> $REVIEW_STATE --body-file "$REPORT_FILE"

@@ -62,10 +62,10 @@ If no worktree was detected (`toplevel` empty), the sub-agent is launched withou
    3. Post it — determine the review state from the report first:
       ```bash
       REPORT_PATH="/run/user/1000/pr-review/<owner>/<repo>/<number>/report.md"
-      if grep -qE '(🔴|[Bb]locker|🟡|[Ww]arning)' "$REPORT_PATH"; then
-        gh pr review <number> --repo <owner/repo> --request-changes --body-file "$REPORT_PATH"
-      else
+      if grep -q '🟢 \*\*APPROVE\*\*' "$REPORT_PATH"; then
         gh pr review <number> --repo <owner/repo> --approve --body-file "$REPORT_PATH"
+      else
+        gh pr review <number> --repo <owner/repo> --request-changes --body-file "$REPORT_PATH"
       fi
       ```
    4. Report back that it was posted
