@@ -68,6 +68,32 @@ The agent's full session context (reviewer outputs, oracle analysis, consolidate
 clean up review 44
 ```
 
+## Optional: Serena-powered code navigation
+
+The review agents use [pi-serena](https://github.com/bacnh85/pi-extensions/tree/main/pi-serena) semantic tools (`serena_*`) for codebase analysis when available — faster symbol/reference navigation and LSP diagnostics than raw grep.
+
+**Serena is strictly optional and never required.** On machines without the pi-serena package, the agents simply fall back to `grep`/`read`; the review flow, report format, and quality are identical. The shipped agent allowlists deliberately exclude serena tool names so the package works on every machine.
+
+To enable serena on your machine (per-machine, local settings only):
+
+1. Add `"npm:@bacnh85/pi-serena"` to the `packages` array in `~/.pi/agent/settings.json`.
+2. Extend the tool allowlists of the three review agents via `subagents.agentOverrides` — e.g.:
+
+```json
+"subagents": {
+  "agentOverrides": {
+    "reviewer": {
+      "tools": ["read", "grep", "find", "ls", "intercom", "serena_status", "serena_get_symbols_overview", "serena_find_symbol", "serena_find_referencing_symbols", "serena_search_for_pattern", "serena_get_diagnostics_for_file"]
+    }
+  }
+}
+```
+
+Repeat the same `tools` override for `oracle` (base: `read, grep, find, ls, bash, intercom`) and `pr-reviewer` (base: `read, bash, subagent, subagent_wait, write`) if you want serena in the orchestrator too.
+3. Reload Pi.
+
+> Do NOT add serena tool names or absolute extension paths to the shipped agent files in this package — that would break launches on machines without pi-serena (strict allowlists hard-fail on unregistered tool names, and missing extension paths hard-fail the session).
+
 ## Updating
 
 ```bash

@@ -81,4 +81,6 @@ If no worktree was detected (`toplevel` empty), the sub-agent is launched withou
 
 10. **Follow-up questions** — if the agent can be resumed, the user can ask about the codebase or request report changes. If it can't, the report file is still there for reference.
 
+11. **Review post-mortem (optional)** — when the user says "run the review post-mortem" (or "post-mortem"), produce the standard metrics analysis: for each sub-agent run (pr-reviewer plus any reviewer/oracle children) report duration, tool-call mix (`serena_*` vs `bash` vs `read`/`grep`/`find`), turns, tokens (input/output/cache-read) and cost where available, with diff-size context, and compare against previous rounds. Attribute differences honestly (diff size vs serena vs test infrastructure). Note: serena availability is machine-dependent — a run with no serena calls is not a defect and must never be flagged as one; the review flow is identical with or without it.
+
 The `pr-reviewer` agent handles the review itself. You manage the lifecycle: capture the run ID at launch, use `resume` for follow-ups, and fall back to the file only if needed.
