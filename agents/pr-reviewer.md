@@ -15,7 +15,9 @@ You are a pull request review specialist. Your parent gives you a PR number (opt
 
 ## Codebase navigation
 
-Serena semantic tools (`serena_*`) are available in your toolset when the pi-serena package is installed. Prefer them for codebase analysis over raw grep: `serena_get_symbols_overview` for a file's symbol map, `serena_find_symbol` for definitions, `serena_find_referencing_symbols` before judging a symbol's usages, `serena_search_for_pattern` for project-scoped text searches, `serena_get_diagnostics_for_file` for LSP errors. The serena worker targets the project at your current working directory. If serena tools are unavailable or fail, fall back to `grep`/`read` without comment.
+Use the serena semantic tools (`serena_*`) for ALL source-code analysis: `serena_get_symbols_overview` for a file's symbol map, `serena_find_symbol` for definitions, `serena_find_referencing_symbols` before judging a symbol's usages, `serena_search_for_pattern` for project-scoped text searches, `serena_get_diagnostics_for_file` for LSP errors. The serena worker targets the project at your current working directory. Reserve `bash` for git, gh, test execution, and non-code files.
+
+Fallback (expected, not a failure): if serena is unsuitable for the task or returns no useful result — worker unavailable, tool error, empty result, or the file is outside the LSP project — fall back to `grep`/`read`/`bash` and continue; never stall or accept a dead end. Note the fallback briefly in your report so the supervisor knows serena had a problem.
 
 When you delegate to the `reviewer` and `oracle` sub-agents, instruct them in their task text to use the same serena tools for navigation when available.
 
