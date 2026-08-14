@@ -48,6 +48,14 @@ If no worktree was detected (`toplevel` empty), the sub-agent is launched withou
 
 6. **Offer to escalate outstanding findings to GitHub issues** — after the review decision is made, if the report contains unresolved 🟡/🟢 findings, propose turning them into GitHub issues **assigned to the PR author** so they don't get lost. Group only what shares a subsystem or fix class; keep self-contained fixes as their own issue. Reference the PR and the finding in each body. Check `gh issue list` for duplicates first, present the proposed list, and wait for an explicit yes — never create issues unprompted. Skip documentation-only items and anything another issue already tracks.
 
+   **Link the created issues from the PR** so anyone viewing the PR later can navigate to the outstanding work:
+   - Every issue body must reference the PR in the exact form `PR #<number>` — that backlink is how issues are discovered later (`gh issue list --repo <owner>/<repo> --state open --search '"PR #<number>"'`).
+   - After the issues are created, post a PR comment linking them. Review bodies are immutable — GitHub has no API to edit a submitted review — so the links always go in a comment:
+     ```bash
+     gh pr comment <number> --repo <owner>/<repo> --body "Outstanding follow-ups from the review: #<n> #<n> …"
+     ```
+   - Verify the comment is visible on the PR before moving on.
+
 7. **If the agent's `contact_supervisor` times out** (~1–2 min), the agent exits gracefully but leaves the report file on disk. You have two options:
 
    **Option A — Resume the agent (preserves full context):**
