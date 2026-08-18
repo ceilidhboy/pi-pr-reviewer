@@ -130,8 +130,27 @@ If the remote matches but you're not on the PR branch, create a temporary worktr
 ```bash
 BASE="${XDG_RUNTIME_DIR:-/run/user/1000}/pr-review"
 mkdir -p "$BASE"
-# Remove worktrees older than 1 hour
-find "$BASE" -mindepth 3 -maxdepth 3 -type d -mmin +60 -exec rm -rf {} + 2>/dev/null || true
+# Clean stale review worktrees (older than 1 hour) BEFORE creating a new one.
+# Always use `git worktree remove` — it deletes the directory AND its admin
+# record in .git/worktrees/ atomically. Plain `rm -rf` leaves ghost records
+# behind that show up as "prunable" entries in `git worktree list`.
+git worktree prune   # clears records whose dirs are already gone (e.g. tmpfs wiped on WSL restart)
+git worktree list --porcelain | awk '
+  /^worktree / { if (path != "") print path, branch; path = $2; branch = "" }
+  /^branch /   { branch = $2 }
+  END          { if (path != "") print path, branch }
+' | while read -r wt branch; do
+  case "$wt" in
+    "$BASE"/*) ;;           # only pr-review worktrees under $BASE
+    *) continue ;;
+  esac
+  [ -d "$wt" ] || continue  # dir gone — prune already handled the record
+  if [ -n "$(find "$wt" -maxdepth 0 -mmin +60)" ]; then
+    # --force: report.md and other untracked files live inside the worktree
+    git worktree remove --force "$wt" && echo "Removed stale review worktree: $wt"
+    [ -n "$branch" ] && git branch -D "${branch#refs/heads/}" 2>/dev/null || true
+  fi
+done
 # Fetch the PR branch as a local ref
 git fetch origin pull/<number>/head:refs/heads/pr-review-tmp-<number>
 mkdir -p "$BASE/<owner>/<repo>"

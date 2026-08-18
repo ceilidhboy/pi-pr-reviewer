@@ -84,8 +84,9 @@ If no worktree was detected (`toplevel` empty), the sub-agent is launched withou
 
 9. **When the user says "clean up review <number>":**
    **⚠️ Only perform cleanup when the PR has been merged or closed.** If the user asks to clean up while the PR is still open, remind them that the report and worktree are still active reference material and suggest waiting until the PR reaches a terminal state.
-   - Run `rm -rf ${XDG_RUNTIME_DIR}/pr-review/<owner>/<repo>/<number>/`
-   - If it was a git worktree, also remove it: `cd <repo> && git worktree remove /run/user/1000/pr-review/...` and delete the temp branch
+   - Prefer `git worktree remove` — it deletes the directory **and** its admin record in `.git/worktrees/` in one step. Do NOT `rm -rf` the directory first: git cannot see that deletion, and the orphaned record lingers as a "prunable" entry.
+   - If the worktree directory still exists: `cd <repo> && git worktree remove --force /run/user/1000/pr-review/<owner>/<repo>/<number>` (force is needed because report.md is untracked inside the worktree), then delete the temp branch: `git branch -D pr-review-tmp-<number>`
+   - If the directory is already gone (e.g. the `/run/user/1000` tmpfs was wiped by a WSL restart): run `git worktree prune` to clear the orphaned admin record
 
 10. **Follow-up questions** — if the agent can be resumed, the user can ask about the codebase or request report changes. If it can't, the report file is still there for reference.
 
